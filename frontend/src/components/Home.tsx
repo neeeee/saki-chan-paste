@@ -1,10 +1,11 @@
-import React, { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 const Home: React.FC = () => {
-  const [content, setContent] = useState("");
+  const [content, setContent] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [expiresInHours, setExpiresInHours] = useState<number | undefined>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const navigate = useNavigate();
 
@@ -13,25 +14,28 @@ const Home: React.FC = () => {
 
     setIsLoading(true);
     try {
-      const response = await axios.post("/api/documents", { content });
+      const response = await axios.post('/api/documents', { 
+        content,
+        expiresInHours 
+      });
       navigate(`/${response.data.key}`);
     } catch (error) {
-      console.error("Error saving document:", error);
-      alert("Error saving document");
+      console.error('Error saving document:', error);
+      alert('Error saving document');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.ctrlKey && e.key === "s") {
+    if (e.ctrlKey && e.key === 's') {
       e.preventDefault();
       handleSave();
       return;
     }
 
     // Handle tab key for 2-space indentation
-    if (e.key === "Tab") {
+    if (e.key === 'Tab') {
       e.preventDefault();
       const textarea = e.currentTarget;
       const start = textarea.selectionStart;
@@ -39,17 +43,16 @@ const Home: React.FC = () => {
 
       if (e.shiftKey) {
         // Shift+Tab: Remove indentation
-        const lines = content.split("\n");
-        const startLine = content.substring(0, start).split("\n").length - 1;
-        const endLine = content.substring(0, end).split("\n").length - 1;
+        const lines = content.split('\n');
+        const startLine = content.substring(0, start).split('\n').length - 1;
+        const endLine = content.substring(0, end).split('\n').length - 1;
 
-        let newContent = "";
         let selectionAdjustment = 0;
         let endAdjustment = 0;
 
         for (let i = 0; i < lines.length; i++) {
           if (i >= startLine && i <= endLine) {
-            if (lines[i].startsWith("  ")) {
+            if (lines[i].startsWith('  ')) {
               lines[i] = lines[i].substring(2);
               if (i === startLine) selectionAdjustment = -2;
               endAdjustment -= 2;
@@ -57,10 +60,9 @@ const Home: React.FC = () => {
           }
         }
 
-        newContent = lines.join("\n");
+        const newContent = lines.join('\n');
         setContent(newContent);
 
-        // Restore selection
         setTimeout(() => {
           textarea.selectionStart = Math.max(0, start + selectionAdjustment);
           textarea.selectionEnd = Math.max(0, end + endAdjustment);
@@ -68,25 +70,23 @@ const Home: React.FC = () => {
       } else {
         // Tab: Add indentation
         if (start === end) {
-          // No selection, just insert 2 spaces
-          const newContent =
-            content.substring(0, start) + "  " + content.substring(end);
+          const newContent = 
+            content.substring(0, start) + '  ' + content.substring(end);
           setContent(newContent);
-
+          
           setTimeout(() => {
             textarea.selectionStart = textarea.selectionEnd = start + 2;
           }, 0);
         } else {
-          // Selection exists, indent all selected lines
-          const lines = content.split("\n");
-          const startLine = content.substring(0, start).split("\n").length - 1;
-          const endLine = content.substring(0, end).split("\n").length - 1;
+          const lines = content.split('\n');
+          const startLine = content.substring(0, start).split('\n').length - 1;
+          const endLine = content.substring(0, end).split('\n').length - 1;
 
           for (let i = startLine; i <= endLine; i++) {
-            lines[i] = "  " + lines[i];
+            lines[i] = '  ' + lines[i];
           }
 
-          const newContent = lines.join("\n");
+          const newContent = lines.join('\n');
           setContent(newContent);
 
           setTimeout(() => {
@@ -99,25 +99,36 @@ const Home: React.FC = () => {
   };
 
   const getLineNumbers = () => {
-    const lines = content.split("\n");
-    return lines.map((_, index) => index + 1).join("\n");
+    const lines = content.split('\n');
+    return lines.map((_, index) => index + 1).join('\n');
   };
 
   return (
     <div className="container">
       <header className="header">
-        <h1>Saki-Chan Paste</h1>
+        <h1>Hastebin Clone</h1>
         <div className="controls">
-          <button
-            onClick={handleSave}
+          <select 
+            value={expiresInHours || ''} 
+            onChange={(e) => setExpiresInHours(e.target.value ? Number(e.target.value) : undefined)}
+            className="expiry-select"
+          >
+            <option value="">Never expires</option>
+            <option value="1">1 hour</option>
+            <option value="24">1 day</option>
+            <option value="168">1 week</option>
+            <option value="720">1 month</option>
+          </select>
+          <button 
+            onClick={handleSave} 
             disabled={!content.trim() || isLoading}
             className="save-btn"
           >
-            {isLoading ? "Saving..." : "Save (Ctrl+S)"}
+            {isLoading ? 'Saving...' : 'Save (Ctrl+S)'}
           </button>
         </div>
       </header>
-
+      
       <div className="editor-container">
         <div className="line-numbers">
           <pre>{getLineNumbers()}</pre>
